@@ -33,14 +33,14 @@
 
 🔹 1. DNS 查询
 - 请求方式：GET
-- 接口地址：/dns_lookup
+- 接口地址：/dns-lookup
 - 请求参数：
 - domain（必填）：要解析的域名
 
 示例请求：
 
 ```bash
-curl http://127.0.0.1:8000/dns_lookup?domain=example.com
+curl http://127.0.0.1:8000/dns-lookup?domain=github.com
 ```
 
 成功响应示例：
