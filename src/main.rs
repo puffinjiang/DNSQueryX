@@ -52,7 +52,7 @@ async fn dns_lookup(query: web::Query<HashMap<String, String>>) -> impl Responde
                 domain, addresses
             );
             HttpResponse::Ok().json(ApiResponse {
-                code: "0".to_string(),
+                code: "00000".to_string(),
                 msg: "OK".to_string(),
                 data: Some(DnsData { domain, addresses }),
             })
