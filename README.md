@@ -68,8 +68,7 @@ curl http://127.0.0.1:8000/dns-lookup?domain=github.com
 
 ## 📝 TODO
 
-- [ ] 增加 AAAA 记录解析（IPv6）。
-- [ ] 添加 Dockerfile，支持容器化部署。
+- [x] 添加 Dockerfile，支持容器化部署。
 
 
 

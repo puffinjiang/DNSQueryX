@@ -1,8 +1,9 @@
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use dotenv::dotenv;
 use serde::Serialize;
-use std::collections::HashMap;
 use std::net::IpAddr;
+use std::{collections::HashMap, env};
 use tracing::{error, info};
 use tracing_subscriber;
 use trust_dns_resolver::{
@@ -25,7 +26,7 @@ struct ApiResponse<T> {
 
 #[get("/dns-lookup")]
 async fn dns_lookup(query: web::Query<HashMap<String, String>>) -> impl Responder {
-    // 获取 URL 查询参数中的 "domain"
+    // get the domain from the query
     let domain = match query.get("domain") {
         Some(d) => d.clone(),
         None => {
@@ -40,10 +41,10 @@ async fn dns_lookup(query: web::Query<HashMap<String, String>>) -> impl Responde
 
     info!("Received DNS lookup request for domain: {}", domain);
 
-    // 创建 DNS 解析器
+    // create the dns resolver
     let resolver = TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
 
-    // 执行 DNS 查询
+    // perform the dns lookup
     match resolver.lookup_ip(&domain).await {
         Ok(response) => {
             let addresses: Vec<IpAddr> = response.iter().collect();
@@ -72,24 +73,41 @@ async fn dns_lookup(query: web::Query<HashMap<String, String>>) -> impl Responde
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // 初始化 tracing 日志订阅器
+    dotenv().ok();
     tracing_subscriber::fmt::init();
 
-    // 配置速率限制：每秒允许 1 次请求，允许最多 5 次突发请求
+    let server_addr = env::var("SERVER_ADDRESS").unwrap_or_else(|_| "0.0.0.0:8000".to_string());
+
+    // get rate limit configuration, default to 3 request per second
+    let per_second = env::var("RATE_LIMIT_PER_SECOND")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(3);
+
+    // get rate limit burst size, default to 10
+    let burst_size = env::var("RATE_LIMIT_BURST_SIZE")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(10);
+
+    // build the governor config
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(1)
-        .burst_size(5)
+        .per_second(per_second.into())
+        .burst_size(burst_size)
         .finish()
         .unwrap();
 
-    info!("Starting DNSQueryX server on 0.0.0.0:8000");
+    info!(
+        "Starting DNSQueryX server on {} with rate limit: {} req/s, burst size: {}",
+        server_addr, per_second, burst_size
+    );
 
     HttpServer::new(move || {
         App::new()
-            .wrap(Governor::new(&governor_conf)) // 速率限制中间件（超限时自动返回 429）
+            .wrap(Governor::new(&governor_conf))
             .service(dns_lookup)
     })
-    .bind("0.0.0.0:8000")?
+    .bind(&server_addr)?
     .run()
     .await
 }
