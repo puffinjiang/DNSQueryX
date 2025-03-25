@@ -1,4 +1,3 @@
-# 使用 Rust 官方镜像作为构建阶段
 FROM rust:latest as builder
 
 # 设置工作目录
@@ -10,17 +9,17 @@ COPY Cargo.toml Cargo.lock ./
 # 复制 src 目录
 COPY src src
 
-# 编译项目
+# 构建可执行文件并显示详细输出
 RUN cargo build --release
 
 # 运行阶段，使用更小的基础镜像（Debian Slim）
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # 设置工作目录
 WORKDIR /app
 
 # 复制可执行文件
-COPY --from=builder /app/target/release/dns_queryx /app/dns_queryx
+COPY --from=builder /app/target/release/DNSQueryX /app/dns_queryx
 
 # 暴露端口
 EXPOSE 8000
